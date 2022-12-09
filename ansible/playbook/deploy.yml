@@ -1,0 +1,49 @@
+- hosts: eoi-server2
+  vars_files:
+    - vars.yml
+  gather_facts: false
+
+#Descarga el proyecto del repo con git
+  tasks:
+    # https://docs.ansible.com/ansible/latest/collections/ansible/builtin/git_module.html
+    - name: Clonar repositorio
+      git:
+        repo: "https://github.com/Sergiolopsuarez/my-first-blog.git"
+        dest: "{{ project_path }}"
+        force: true
+
+#Crea un entorno virtual. Activa el entorno virtual
+#Instala reuqirements.txt
+    - name: Crear env e instalar requirements
+      pip:
+        requirements: "{{ project_path }}/requirements.txt"
+        virtualenv: "{{ project_path }}/.venv"
+
+#Genera las migraciones del proyecto con python manage.py makemigrations
+    - name: Ejecutar el manage.py
+      file:
+        path: "{{ project_path }}/manage.py"
+        mode: 0777
+
+    - name: Makemigrations
+      community.general.django_manage:
+        command: makemigrations
+        project_path: "{{ project_path }}"
+        virtual_env: "{{ project_path }}/.venv"
+
+#Ejecuta las migraciones en la base de datos con python manage.py migrate
+    - name: Migrate
+      community.general.django_manage:
+        command: migrate
+        project_path: "{{ project_path }}"
+        virtual_env: "{{ project_path }}/.venv"
+
+#Carga los datos iniciales del fichero db.json con python manage.py loaddata db.json
+    - name: Cargas datos
+      django_manage:
+        command: loaddata
+        project_path: "{{ project_path }}"
+        virtual_env: "{{ project_path }}/.venv"
+        fixtures: "{{project_path}}/db.json"
+
+#Ejecuta el servidor de django para probar la aplicación
